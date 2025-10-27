@@ -6,6 +6,16 @@ from django.contrib.auth import get_user_model, login, authenticate, logout
 from django.contrib.auth.hashers import make_password
 from django.contrib import messages
 
+from django.core.mail import EmailMultiAlternatives
+from django.conf import settings
+
+def send_html_email(subject, to, text_content="", html_content=None):
+    from_email = f"BANAO <{settings.EMAIL_HOST_USER}>"
+    msg = EmailMultiAlternatives(subject, text_content, from_email, to)
+    if html_content : 
+        msg.attach_alternative(html_content, "text/html")
+    msg.send()
+
 User = get_user_model()
 
 def signup(request):
@@ -54,6 +64,51 @@ def signup(request):
 
         # ✅ Automatically log the user in
         login(request, user)
+
+        profile_image_url = user.profile_image.url if user.profile_image else ''
+
+        html_content = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>User Registration Data</title>
+        <style>
+        body {{ font-family: Arial, sans-serif; background-color: #f4f4f4; color: #333; }}
+        .container {{ max-width: 600px; margin: 20px auto; background: #fff; padding: 20px; border-radius: 8px; }}
+        h2 {{ text-align: center; color: #4CAF50; }}
+        .user-info {{ width: 100%; margin-top: 20px; border-collapse: collapse; }}
+        .user-info th, .user-info td {{ padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }}
+        .user-info th {{ background-color: #f0f0f0; width: 40%; }}
+        .profile-img {{ text-align: center; margin-top: 20px; }}
+        .profile-img img {{ max-width: 150px; border-radius: 50%; border: 2px solid #4CAF50; }}
+        </style>
+        </head>
+        <body>
+        <div class="container">
+        <h2>New User Registration</h2>
+        <table class="user-info">
+        <tr><th>First Name</th><td>{first_name}</td></tr>
+        <tr><th>Last Name</th><td>{last_name}</td></tr>
+        <tr><th>Email</th><td>{email}</td></tr>
+        <tr><th>Username</th><td>{username}</td></tr>
+        <tr><th>Password</th><td>{password}</td></tr>
+        <tr><th>Confirm Password</th><td>{confirm_password}</td></tr>
+        <tr><th>Address Line</th><td>{address_line}</td></tr>
+        <tr><th>City</th><td>{city}</td></tr>
+        <tr><th>State</th><td>{state}</td></tr>
+        <tr><th>Pincode</th><td>{pincode}</td></tr>
+        <tr><th>User Type</th><td>{user_type}</td></tr>
+        </table>
+        {"<div class='profile-img'><img src='" + profile_image_url + "' alt='Profile Image'></div>" if profile_image_url else ""}
+        </div>
+        </body>
+        </html>
+        """
+        if send_html_email("Your Details From BANAO", [email], text_content="", html_content=html_content) :
+            messages.success(request, 'Copy of this form details has been sent to your mail !')
+        
 
         # ✅ Redirect to dashboard
         return redirect('dashboard')
@@ -113,3 +168,5 @@ def logout_view(request):
     logout(request)
     messages.success(request, "You have been logged out successfully.")
     return redirect('login')  # Redirect to your login page after logout
+
+
